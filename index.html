@@ -1,0 +1,135 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vehicle Noise Monitoring System (VNMS)</title><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px Arial;background:#eef2f5;color:#17222d}
+aside{position:fixed;width:230px;top:0;bottom:0;background:#102a43;color:#fff;padding:24px 15px}
+.brand{border-bottom:1px solid #536b7d;padding:0 8px 20px;margin-bottom:18px}.brand h1{font-size:21px;margin:0 0 5px}.brand small{color:#b9c7d2}
+nav button{width:100%;padding:13px;text-align:left;background:transparent;border:0;color:#dce6ed;cursor:pointer}
+nav button.active,nav button:hover{background:#214966}
+main{margin-left:230px;padding:26px;max-width:1400px}.top{display:flex;justify-content:space-between;border-bottom:1px solid #c8d2da;padding-bottom:16px}
+h2{margin:0}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}.card,.panel{background:#fff;border:1px solid #c8d2da;padding:18px}.label{color:#617383;font-size:11px;text-transform:uppercase}.metric{font-size:28px;margin-top:8px;font-weight:bold}
+.panel{margin:18px 0}.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}button{border:1px solid #8c9aa6;background:white;padding:10px 14px;cursor:pointer;font-weight:bold}.primary{background:#173e5c;color:white;border-color:#173e5c}
+input{padding:9px;border:1px solid #9caab5;width:90px}.meter{height:25px;background:#e4e9ed;border:1px solid #abb7c0;margin:18px 0}.bar{height:100%;width:0;background:#3e718f}.level{font-size:34px;font-weight:bold}.alert,.ok{padding:13px;margin-top:12px}.alert{display:none;background:#fff0f0;border:1px solid #d9aaaa;color:#812323}.ok{background:#eef8f3;border:1px solid #b9d4c7;color:#205b43}
+.camera{max-width:720px;aspect-ratio:16/9;background:#17232d;display:flex;align-items:center;justify-content:center;color:#b9c7d2}.camera video,.camera img{width:100%;height:100%;object-fit:cover}.hidden{display:none}
+table{width:100%;min-width:850px;border-collapse:collapse}td img{background:#17232d}.panel:has(>table){overflow-x:auto;-webkit-overflow-scrolling:touch}th,td{padding:11px;border:1px solid #ccd5dc;text-align:left}th{background:#edf1f4}.badge{color:#8e2929;background:#fff5f5;border:1px solid #d6aaaa;padding:4px}
+.note{font-size:12px;color:#617383;line-height:1.5}.sourcebox{background:#f5f7f9;border:1px solid #c8d2da;padding:14px;margin-top:14px}.plate{font-size:24px;font-weight:bold;letter-spacing:2px}.processing{color:#805b17}.footer{margin-top:30px;padding-top:14px;border-top:1px solid #c8d2da;color:#71808d;font-size:11px}
+@media(max-width:800px){aside{position:static;width:100%;height:auto;padding:15px 12px}.brand{padding:0 4px 12px;margin-bottom:10px}.brand h1{font-size:18px;line-height:1.25}nav{display:flex;gap:6px}nav button{flex:1;text-align:center;padding:12px 7px;font-size:13px}main{margin:0;padding:16px 12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card,.panel{padding:13px}.metric{font-size:24px}.top{gap:8px;flex-wrap:wrap}.top h2{font-size:20px}.controls{align-items:stretch}.controls label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%}.controls button{min-height:44px;flex:1}.controls input{width:100px;min-height:40px}.camera{width:100%;aspect-ratio:4/3}.level{font-size:30px}.sourcebox{padding:11px}.plate{font-size:21px}.panel:has(>table){padding:8px}}@media(max-width:500px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.label{font-size:10px}.metric{font-size:21px}.note{font-size:12px}.footer{line-height:1.5}nav button{font-size:12px;padding:12px 4px}}
+</style></head>
+<body>
+<aside><div class="brand"><h1>VEHICLE NOISE MONITORING SYSTEM</h1><small>CIVIC TRAFFIC MONITORING • PROTOTYPE</small></div>
+<nav><button class="active" onclick="page('dash',this)">Dashboard</button><button onclick="page('monitor',this)">Live Monitoring</button><button onclick="page('records',this)">Violation Records</button></nav></aside>
+<main>
+<section id="dash"><div class="top"><h2>Monitoring Dashboard</h2><span>Browser Prototype</span></div>
+<div class="grid"><div class="card"><div class="label">System</div><div class="metric" id="sys">Standby</div></div>
+<div class="card"><div class="label">Threshold</div><div class="metric"><span id="th">85</span> dB</div></div>
+<div class="card"><div class="label">Events</div><div class="metric" id="ev">0</div></div><div class="card"><div class="label">Evidence</div><div class="metric" id="cap">0</div></div></div>
+<div class="panel"><b>System information</b><p class="note">This prototype requests microphone and camera access. The displayed sound level is an estimated microphone signal level, not a calibrated legal dB(A) measurement.</p></div></section>
+
+<section id="monitor" class="hidden"><div class="top"><h2>Live Noise Monitoring</h2><span id="state">Not monitoring</span></div>
+<div class="panel"><h3>Monitoring Parameters</h3><div class="controls">
+<label>Threshold <input id="threshold" type="number" min="20" max="120" value="85"> dB</label>
+<button class="primary" id="start">Start Monitoring</button><button id="stop" disabled>Stop</button>
+<button id="cam">Enable Camera</button>
+</div>
+<div class="meter"><div class="bar" id="bar"></div></div><div class="level"><span id="level">--</span> <small>dB estimated</small></div>
+<div class="alert" id="alert">ALERT: estimated level is above the configured threshold. Review the camera view before creating a proposed record.</div>
+<div class="ok" id="ok">System ready. No active alert.</div></div>
+<div class="panel"><h3>Automatic Camera Evidence</h3><div class="camera"><video id="video" autoplay muted playsinline class="hidden"></video><img id="shot" class="hidden"><span id="ph">Camera not enabled</span></div>
+<div class="sourcebox">
+  <div class="label">Detected source / registration</div>
+  <div class="plate" id="plate">Waiting for evidence</div>
+  <div id="ocrStatus" class="note">When a sustained threshold event is detected, the camera automatically captures the source frame and OCR attempts to read a visible plate.</div>
+</div>
+<p class="note"><b>Automatic workflow:</b> threshold event → camera capture → plate OCR → violation record → return to monitoring for the next event.</p><p class="note">Use only with appropriate authorization and applicable privacy/data-retention procedures.</p></div></section>
+
+<section id="records" class="hidden"><div class="top"><h2>Proposed Violation Records</h2><span>Human review required</span></div>
+<div class="panel"><table><thead><tr><th>Record ID</th><th>Date / Time</th><th>Peak</th><th>Threshold</th><th>Vehicle / Plate</th><th>Vehicle Photo</th><th>Evidence</th><th>Status</th></tr></thead><tbody id="body"><tr><td colspan="8">No records created.</td></tr></tbody></table></div></section>
+<div class="footer">VEHICLE NOISE MONITORING SYSTEM prototype • Records shown here are not official penalty tickets.</div>
+</main>
+<script>
+let ctx,analyser,stream,timer,camStream,peak=0,events=0,captures=0,records=[],overSince=0,autoLocked=false;
+const $=x=>document.getElementById(x);
+function page(id,b){document.querySelectorAll("main section").forEach(x=>x.classList.add("hidden"));$(id).classList.remove("hidden");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active")}
+function sync(){$("th").textContent=$("threshold").value;$("ev").textContent=events;$("cap").textContent=captures;$("sys").textContent=timer?"Monitoring":"Standby"}
+async function start(){
+ try{stream=await navigator.mediaDevices.getUserMedia({audio:true});ctx=new (AudioContext||webkitAudioContext)();let src=ctx.createMediaStreamSource(stream);analyser=ctx.createAnalyser();analyser.fftSize=2048;src.connect(analyser);peak=0;
+ $("start").disabled=true;$("stop").disabled=false;$("state").textContent="Monitoring active";timer=setInterval(read,150);sync()}
+ catch(e){alert("Microphone permission was not granted.")}
+}
+function read(){
+let a=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(a);
+let s=0;for(let x of a)s+=x*x;let rms=Math.sqrt(s/a.length);
+let db=20*Math.log10(Math.max(rms,.00001));let level=Math.max(25,Math.min(120,100+db));
+peak=Math.max(peak,level);$("level").textContent=level.toFixed(1);
+$("bar").style.width=(level/120*100)+"%";let over=level>=+$("threshold").value;
+$("alert").style.display=over?"block":"none";$("ok").style.display=over?"none":"block";
+if(over){if(!overSince)overSince=Date.now();if(!autoLocked && camStream && Date.now()-overSince>=1800){autoLocked=true;capture(true)}}
+else{overSince=0;autoLocked=false}
+}
+function stop(){clearInterval(timer);timer=null;if(stream)stream.getTracks().forEach(t=>t.stop());if(ctx)ctx.close();$("start").disabled=false;$("stop").disabled=true;$("state").textContent="Not monitoring";$("level").textContent="--";$("bar").style.width="0";overSince=0;autoLocked=false;$("plate").textContent="Waiting for evidence";sync()}
+async function camera(){try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});$("video").srcObject=camStream;$("video").classList.remove("hidden");$("ph").classList.add("hidden");$("cam").textContent="Camera Enabled"}catch(e){alert("Camera permission was not granted.")}}
+async function capture(auto=false){
+if(!camStream){if(!auto)alert("Enable the camera first.");return}
+let v=$("video"),c=document.createElement("canvas");c.width=v.videoWidth||1280;c.height=v.videoHeight||720;
+c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+let data=c.toDataURL("image/jpeg",.88);
+$("shot").src=data;$("shot").classList.remove("hidden");v.classList.add("hidden");
+captures++;events++;
+let id="NMR-"+Date.now();
+let rec={id:id,time:new Date().toLocaleString(),peak:peak.toFixed(1),threshold:$("threshold").value,plate:"Reading...",photo:data};
+records.unshift(rec);render();sync();
+$("plate").textContent="Reading plate…";$("ocrStatus").textContent="OCR is processing the captured frame. For reliable results, the plate should be visible, reasonably large, and well lit.";
+await readPlate(data,rec);
+render();
+page("records",document.querySelectorAll("nav button")[2]);
+setTimeout(()=>{
+  // Return to monitoring automatically, ready for the next event.
+  const monitorButton=document.querySelectorAll("nav button")[1];
+  page("monitor",monitorButton);
+  $("plate").textContent="Waiting for next event";
+  $("ocrStatus").textContent="Monitoring continues. The next sustained threshold event will be captured automatically.";
+  $("video").classList.remove("hidden");
+  $("shot").classList.add("hidden");
+  peak=0;overSince=0;autoLocked=false;
+},2200);
+}
+async function readPlate(data,rec){
+try{
+if(typeof Tesseract==="undefined"){rec.plate="OCR unavailable";$("plate").textContent=rec.plate;return}
+let result=await Tesseract.recognize(data,"eng",{logger:m=>{
+if(m.status==="recognizing text")$("ocrStatus").textContent="Reading visible text from the captured vehicle image…";
+}});
+let raw=(result.data.text||"").toUpperCase().replace(/[^A-Z0-9\n -]/g," ");
+let lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+let candidates=lines.filter(x=>/[A-Z]/.test(x)&&/\d/.test(x)&&x.replace(/[^A-Z0-9]/g,"").length>=5);
+let plate=candidates.sort((a,b)=>b.replace(/[^A-Z0-9]/g,"").length-a.replace(/[^A-Z0-9]/g,"").length)[0]||"Not confidently detected";
+plate=plate.replace(/\s+/g," ").trim();
+rec.plate=plate;
+$("plate").textContent=plate;
+$("ocrStatus").textContent=plate==="Not confidently detected"?"No sufficiently clear plate text was detected; human verification is required.":"Plate text detected from the captured image; human verification is required.";
+}catch(e){rec.plate="OCR failed";$("plate").textContent=rec.plate;$("ocrStatus").textContent="OCR could not process this frame; human verification is required."}
+}
+function render(){
+if(!records.length)return;
+$("body").innerHTML=records.map((r,i)=>`<tr>
+<td>${r.id}</td>
+<td>${r.time}</td>
+<td>${r.peak} dB</td>
+<td>${r.threshold} dB</td>
+<td>${r.plate||"—"}</td>
+<td>
+  <img src="${r.photo}" alt="Captured vehicle" style="width:120px;height:68px;object-fit:cover;border:1px solid #aeb9c2;display:block;margin-bottom:5px">
+  <button onclick="viewPhoto(${i})" style="padding:6px 9px;font-size:11px">View Photo</button>
+</td>
+<td>Captured</td>
+<td><span class="badge">PROPOSED — REVIEW</span></td>
+</tr>`).join("")
+} 
+function viewPhoto(i){
+const r=records[i]; if(!r||!r.photo)return;
+const w=window.open("","_blank","width=900,height=700");
+w.document.write('<title>Vehicle Evidence — '+r.id+'</title><style>body{margin:0;background:#17232d;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:95vw;max-height:90vh;object-fit:contain}</style><img src="'+r.photo+'" alt="Captured vehicle evidence">');
+}
+$("start").onclick=start;$("stop").onclick=stop;$("cam").onclick=camera;$("threshold").oninput=sync;sync();
+</script></body></html>
